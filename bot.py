@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Основная функция запуска бота"""
-    # Инициализация базы данных
     logger.info("Инициализация базы данных...")
     await init_db()
     
@@ -24,16 +23,15 @@ async def main():
     bot = Bot(token=BOT_TOKEN, parse_mode=ParseMode.HTML)
     dp = Dispatcher()
     
-    # Регистрация роутеров (порядок важен!)
+    # Регистрация роутеров 
     dp.include_router(commands.router)
     dp.include_router(callbacks.router)
     dp.include_router(menu_handlers.router)
     dp.include_router(admin_handlers.router)
-    dp.include_router(files.router)  # Файлы в конце, чтобы не перехватывать другие сообщения
+    dp.include_router(files.router)
     
     logger.info("Бот запущен и готов к работе!")
     
-    # Запуск polling
     await dp.start_polling(bot)
 
 

@@ -3,6 +3,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 class UserStates(StatesGroup):
     """Состояния пользователя"""
+    waiting_for_work_type = State()
     waiting_for_document = State()
     viewing_tariffs = State()
     selecting_tariff = State()

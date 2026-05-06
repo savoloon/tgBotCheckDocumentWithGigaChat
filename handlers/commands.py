@@ -19,18 +19,17 @@ router = Router()
 @router.message(Command("start"))
 async def cmd_start(message: Message, state: FSMContext):
     """Обработчик команды /start"""
-    await state.clear()  # Очищаем состояние
+    await state.clear()  
     
     user_id = message.from_user.id
     
-    # Создаем пользователя, если его нет
     await create_user(user_id)
     
     free_checks = await get_user_free_checks(user_id)
     remaining_free = max(0, 3 - free_checks)
     
     welcome_text = f"""
-👋 Добро пожаловать в бота для проверки документов!
+👋 Добро пожаловать в систему проверки учебных работ. Выберите действие: начать новую проверку или открыть историю результатов.
 
 📄 Вы можете отправить PDF документ, и я проверю его на:
 • Морфологические ошибки
@@ -42,7 +41,6 @@ async def cmd_start(message: Message, state: FSMContext):
 Используйте кнопки меню для навигации:
 """
     
-    # Проверяем, является ли пользователь администратором
     admin_status = await is_admin(user_id)
     keyboard = get_admin_menu() if admin_status else get_main_menu()
     
@@ -126,7 +124,6 @@ async def cmd_admin(message: Message):
     """Панель администратора"""
     user_id = message.from_user.id
     
-    # Отладочная информация
     from database import get_user
     user_data = await get_user(user_id)
     print(f"DEBUG: User ID: {user_id}")
@@ -162,7 +159,6 @@ async def cmd_create_tariff(message: Message):
         await message.answer("❌ У вас нет прав администратора.")
         return
     
-    # Парсим команду: /create_tariff название|цена|количество
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
         await message.answer(
@@ -203,7 +199,6 @@ async def cmd_debug_user(message: Message):
     """Отладочная команда для проверки данных пользователя"""
     user_id = message.from_user.id
     
-    # Получаем данные пользователя
     user_data = await get_user(user_id)
     admin_status = await is_admin(user_id)
     
@@ -226,14 +221,12 @@ async def cmd_make_me_admin(message: Message):
     """Временная команда для назначения себя администратором (только для отладки)"""
     user_id = message.from_user.id
     
-    # Проверяем, есть ли уже администраторы
     from database import get_connection
     conn = await get_connection()
     try:
         admin_count = await conn.fetchval("SELECT COUNT(*) FROM users WHERE isadmin = 1")
         
         if admin_count == 0:
-            # Если нет администраторов, назначаем текущего пользователя
             await conn.execute("UPDATE users SET isadmin = 1 WHERE id = $1", user_id)
             await message.answer(f"✅ Вы назначены администратором! ID: {user_id}")
         else:

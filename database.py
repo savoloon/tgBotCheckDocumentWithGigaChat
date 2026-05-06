@@ -1,5 +1,7 @@
 import asyncpg
 import os
+from typing import Optional, List, Dict, Any
+
 from config import DATABASE_URL
 from urllib.parse import urlparse
 
@@ -44,7 +46,6 @@ async def init_db():
     """Инициализация базы данных и создание таблиц"""
     conn = await get_connection()
     try:
-        # Таблица тарифов
         await conn.execute("""
                     CREATE TABLE IF NOT EXISTS tariffs (
                         id SERIAL PRIMARY KEY,
@@ -54,7 +55,6 @@ async def init_db():
                     )
                 """)
 
-        # Таблица пользователей
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id BIGINT PRIMARY KEY,
@@ -66,7 +66,6 @@ async def init_db():
             )
         """)
 
-        # Таблица файлов
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS files (
                 id SERIAL PRIMARY KEY,
@@ -77,20 +76,24 @@ async def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id)
             )
         """)
-        
 
-        # Таблица аналитики
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS analytics (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
                 status TEXT NOT NULL,
                 file_id INTEGER NOT NULL,
+                work_type TEXT,
                 responseFromAI TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id),
                 FOREIGN KEY (file_id) REFERENCES files(id)
             )
+        """)
+
+        await conn.execute("""
+            ALTER TABLE analytics
+            ADD COLUMN IF NOT EXISTS work_type TEXT
         """)
         
 
@@ -159,8 +162,6 @@ async def get_user_tariff_checks(user_id: int) -> int:
             user.get("id_tarif")
         )
         if row:
-            # Здесь можно добавить логику подсчета использованных проверок
-            # Для упрощения возвращаем общее количество
             return row["checks_count"]
     finally:
         await conn.close()
@@ -190,14 +191,68 @@ async def save_file(user_id: int, file_path: str, file_name: str) -> int:
         await conn.close()
 
 
-async def save_analytics(user_id: int, file_id: int, status: str, response: str = None):
+async def save_analytics(
+    user_id: int,
+    file_id: int,
+    status: str,
+    response: str = None,
+    work_type: Optional[str] = None,
+):
     """Сохранить аналитику проверки"""
     conn = await get_connection()
     try:
         await conn.execute(
-            "INSERT INTO analytics (user_id, status, file_id, responseFromAI) VALUES ($1, $2, $3, $4)",
-            user_id, status, file_id, response
+            "INSERT INTO analytics (user_id, status, file_id, work_type, responseFromAI) VALUES ($1, $2, $3, $4, $5)",
+            user_id, status, file_id, work_type, response
         )
+    finally:
+        await conn.close()
+
+
+async def get_user_history(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    """Получить последние проверки пользователя для отображения истории."""
+    conn = await get_connection()
+    try:
+        rows = await conn.fetch(
+            """
+            SELECT
+                id,
+                status,
+                work_type,
+                responseFromAI,
+                created_at
+            FROM analytics
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            """,
+            user_id,
+            limit,
+        )
+        return [dict(row) for row in rows]
+    finally:
+        await conn.close()
+
+
+async def get_history_item(user_id: int, analytics_id: int) -> Optional[Dict[str, Any]]:
+    """Получить конкретный результат из истории проверки пользователя."""
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow(
+            """
+            SELECT
+                id,
+                status,
+                work_type,
+                responsefromai,
+                created_at
+            FROM analytics
+            WHERE user_id = $1 AND id = $2
+            """,
+            user_id,
+            analytics_id,
+        )
+        return dict(row) if row else None
     finally:
         await conn.close()
 

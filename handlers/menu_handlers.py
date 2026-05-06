@@ -3,23 +3,23 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from database import (
     get_user_free_checks, can_user_check_document, get_all_tariffs,
-    get_user, is_admin
+    get_user, is_admin, get_user_history
 )
 from keyboards.main_menu import (
     get_main_menu, get_admin_menu, get_tariffs_inline_keyboard,
-    get_admin_tariff_keyboard, get_cancel_keyboard
+    get_admin_tariff_keyboard, get_cancel_keyboard,
+    get_work_type_inline_keyboard, get_history_inline_keyboard
 )
 from states.user_states import UserStates, AdminStates
 
 router = Router()
 
 
-@router.message(F.text == "📄 Проверить документ")
+@router.message(F.text == "📄 Начать проверку документа")
 async def menu_check_document(message: Message, state: FSMContext):
     """Обработчик кнопки 'Проверить документ'"""
     user_id = message.from_user.id
     
-    # Проверяем, может ли пользователь проверить документ
     if not await can_user_check_document(user_id):
         await message.answer(
             "❌ У вас закончились бесплатные проверки.\n"
@@ -27,17 +27,32 @@ async def menu_check_document(message: Message, state: FSMContext):
             reply_markup=get_main_menu()
         )
         return
-    
-    await state.set_state(UserStates.waiting_for_document)
-    
+
+    await state.clear()
+    await state.set_state(UserStates.waiting_for_work_type)
     await message.answer(
-        "📄 Отправьте PDF файл для проверки.\n\n"
-        "Бот проверит документ на:\n"
-        "• Морфологические ошибки\n"
-        "• Синтаксические ошибки\n"
-        "• Логические ошибки\n\n"
-        "Для отмены используйте /cancel",
-        reply_markup=get_cancel_keyboard()
+        "Выберите тип работы, чтобы бот применил соответствующие критерии проверки:",
+        reply_markup=get_work_type_inline_keyboard(),
+    )
+
+
+@router.message(F.text.in_(["📂 История", "История"]))
+async def menu_history(message: Message, state: FSMContext):
+    """Показать историю проверок пользователю"""
+    user_id = message.from_user.id
+    await state.clear()
+
+    history = await get_user_history(user_id, limit=10)
+    if not history:
+        await message.answer(
+            "📂 История проверок пока пуста. Начните новую проверку кнопкой ниже.",
+            reply_markup=get_main_menu(),
+        )
+        return
+
+    await message.answer(
+        "📂 Последние проверки (нажмите на запись для подробного результата):",
+        reply_markup=get_history_inline_keyboard(history),
     )
 
 
@@ -51,7 +66,6 @@ async def menu_my_stats(message: Message):
     remaining_free = max(0, 3 - free_checks)
     can_check = await can_user_check_document(user_id)
     
-    # Информация о тарифе
     tariff_info = "Не активирован"
     if user and user.get('id_tarif'):
         tariffs = await get_all_tariffs()
@@ -98,14 +112,14 @@ async def menu_tariffs(message: Message, state: FSMContext):
     )
 
 
-@router.message(F.text == "ℹ️ Помощь")
+@router.message(F.text == "ℹ️ Инструкция")
 async def menu_help(message: Message):
-    """Обработчик кнопки 'Помощь'"""
+    """Обработчик кнопки 'Инструкция'"""
     help_text = """
 📖 Справка по использованию бота:
 
 🔹 **Проверка документов:**
-1. Нажмите "📄 Проверить документ"
+1. Нажмите "📄 Начать проверку документа"
 2. Отправьте PDF файл
 3. Получите детальный анализ ошибок
 

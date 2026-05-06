@@ -1,7 +1,3 @@
-"""
-Скрипт для назначения пользователя администратором
-Использование: python make_admin.py YOUR_TELEGRAM_USER_ID
-"""
 import asyncio
 import sys
 from database import init_db, get_connection
@@ -28,9 +24,9 @@ async def make_admin(user_id: int):
         # Проверяем результат
         row = await conn.fetchrow("SELECT * FROM users WHERE id = $1", user_id)
         if row and row["isadmin"] == 1:
-            print(f"✅ Пользователь {user_id} успешно назначен администратором!")
+            print(f"Пользователь {user_id} успешно назначен администратором!")
         else:
-            print(f"❌ Ошибка при назначении администратора для пользователя {user_id}")
+            print(f"Ошибка при назначении администратора для пользователя {user_id}")
     finally:
         await conn.close()
 
@@ -45,8 +41,8 @@ if __name__ == "__main__":
         user_id = int(sys.argv[1])
         asyncio.run(make_admin(user_id))
     except ValueError:
-        print("❌ Ошибка: ID пользователя должен быть числом")
+        print("Ошибка: ID пользователя должен быть числом")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Произошла ошибка: {str(e)}")
+        print(f"Произошла ошибка: {str(e)}")
         sys.exit(1)

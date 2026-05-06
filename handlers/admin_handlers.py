@@ -27,7 +27,6 @@ async def admin_tariff_name(message: Message, state: FSMContext):
         )
         return
     
-    # Сохраняем название в состояние
     await state.update_data(tariff_name=tariff_name)
     await state.set_state(AdminStates.creating_tariff_price)
     
@@ -59,7 +58,6 @@ async def admin_tariff_price(message: Message, state: FSMContext):
         )
         return
     
-    # Сохраняем цену в состояние
     await state.update_data(tariff_price=price)
     await state.set_state(AdminStates.creating_tariff_checks)
     
@@ -94,13 +92,11 @@ async def admin_tariff_checks(message: Message, state: FSMContext):
         )
         return
     
-    # Получаем все данные из состояния
     data = await state.get_data()
     tariff_name = data['tariff_name']
     tariff_price = data['tariff_price']
     
     try:
-        # Создаем тариф
         tariff_id = await create_tariff(tariff_name, tariff_price, checks_count)
         
         await message.answer(

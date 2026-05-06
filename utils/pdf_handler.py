@@ -9,11 +9,9 @@ async def save_pdf_file(file_content: bytes, user_id: int, file_name: str) -> st
     files_dir = "downloaded_files"
     os.makedirs(files_dir, exist_ok=True)
     
-    # Создаем папку для пользователя
     user_dir = os.path.join(files_dir, str(user_id))
     os.makedirs(user_dir, exist_ok=True)
     
-    # Сохраняем файл
     file_path = os.path.join(user_dir, file_name)
     async with aiofiles.open(file_path, 'wb') as f:
         await f.write(file_content)
@@ -28,7 +26,6 @@ def validate_pdf(file_content: bytes) -> tuple[bool, str]:
         if len(pdf_reader.pages) == 0:
             return False, "PDF файл пустой"
         
-        # Пытаемся прочитать первую страницу
         first_page = pdf_reader.pages[0]
         text = first_page.extract_text()
         
